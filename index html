@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloch Sphere Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #1a1d24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #7a7f8e;
+    --text3: #4a4f5e;
+    --accent: #4a9eff;
+    --accent2: #2563eb;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --pink: #f472b6;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', monospace; }
+
+  body {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: 48px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+  }
+
+  .header-sep { width: 1px; height: 20px; background: var(--border2); }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .header-right {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  #canvas-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  canvas {
+    cursor: grab;
+    display: block;
+  }
+  canvas:active { cursor: grabbing; }
+
+  .hint {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+  }
+
+  #panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .panel-section { display: flex; flex-direction: column; gap: 10px; }
+
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .state-box {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .state-label { font-size: 10px; color: var(--text3); margin-bottom: 6px; letter-spacing: 0.06em; }
+
+  .state-value {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 500;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .coord-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .coord-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 8px 10px;
+    text-align: center;
+  }
+
+  .coord-card .name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+
+  .coord-card .val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .coord-card.cx .val { color: var(--pink); }
+  .coord-card.cy .val { color: var(--green); }
+  .coord-card.cz .val { color: var(--amber); }
+
+  .ctrl-row { display: flex; flex-direction: column; gap: 6px; }
+
+  .ctrl-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .ctrl-label .val {
+    color: var(--text);
+    font-weight: 500;
+    min-width: 40px;
+    text-align: right;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]#theta::-webkit-slider-thumb { background: var(--pink); }
+  input[type=range]#phi::-webkit-slider-thumb { background: var(--green); }
+
+  .presets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .preset-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(74, 158, 255, 0.06);
+  }
+
+  .preset-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(74, 158, 255, 0.1);
+  }
+
+  .gate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .gate-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text2);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 9px 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  .gate-btn:hover { border-color: var(--amber); color: var(--amber); background: rgba(251,191,36,0.06); }
+  .gate-btn:active { transform: scale(0.96); }
+
+  .divider { height: 1px; background: var(--border); }
+
+  .prob-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  .prob-label { color: var(--text2); }
+
+  .prob-bar-wrap {
+    flex: 1;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    margin: 0 10px;
+    overflow: hidden;
+  }
+
+  .prob-bar { height: 100%; border-radius: 2px; transition: width 0.2s ease; }
+  .prob-bar.p0 { background: var(--accent); }
+  .prob-bar.p1 { background: var(--pink); }
+  .prob-val { color: var(--text); min-width: 36px; text-align: right; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">BLOCH SPHERE</span>
+  <div class="header-sep"></div>
+  <span class="header-sub">qubit state visualizer</span>
+  <span class="header-right">drag to rotate · scroll to zoom</span>
+</header>
+
+<div id="canvas-area">
+  <canvas id="c"></canvas>
+  <div class="hint">drag to rotate · scroll to zoom</div>
+</div>
+
+<div id="panel">
+
+  <div class="panel-section">
+    <div class="section-title">Quantum State</div>
+    <div class="state-box">
+      <div class="state-label">DIRAC NOTATION</div>
+      <div class="state-value" id="state-dirac">|ψ⟩ = |0⟩</div>
+    </div>
+    <div class="coord-grid">
+      <div class="coord-card cx"><div class="name">x</div><div class="val" id="coord-x">0.00</div></div>
+      <div class="coord-card cy"><div class="name">y</div><div class="val" id="coord-y">0.00</div></div>
+      <div class="coord-card cz"><div class="name">z</div><div class="val" id="coord-z">1.00</div></div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-title">Angles</div>
+    <div class="ctrl-row">
+      <div class="ctrl-label">θ polar <span class="val" id="tval">0°</span></div>
+      <input type="range" id="theta" min="0" max="180" value="0" step="1">
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label">φ azimuthal <span class="val" id="pval">0°</span></div>
+      <input type="range" id="phi" min="0" max="360" value="0" step="1">
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-title">Measurement Probability</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="prob-row">
+        <span class="prob-label">|0⟩</span>
+        <div class="prob-bar-wrap"><div class="prob-bar p0" id="bar0" style="width:100%"></div></div>
+        <span class="prob-val" id="prob0">100%</span>
+      </div>
+      <div class="prob-row">
+        <span class="prob-label">|1⟩</span>
+        <div class="prob-bar-wrap"><div class="prob-bar p1" id="bar1" style="width:0%"></div></div>
+        <span class="prob-val" id="prob1">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-title">Basis States</div>
+    <div class="presets-grid">
+      <button class="preset-btn active" data-t="0" data-p="0">|0⟩</button>
+      <button class="preset-btn" data-t="180" data-p="0">|1⟩</button>
+      <button class="preset-btn" data-t="90" data-p="0">|+⟩</button>
+      <button class="preset-btn" data-t="90" data-p="180">|−⟩</button>
+      <button class="preset-btn" data-t="90" data-p="90">|i⟩</button>
+      <button class="preset-btn" data-t="90" data-p="270">|−i⟩</button>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <div class="section-title">Quantum Gates</div>
+    <div class="gate-grid">
+      <button class="gate-btn" data-gate="X">X</button>
+      <button class="gate-btn" data-gate="Y">Y</button>
+      <button class="gate-btn" data-gate="Z">Z</button>
+      <button class="gate-btn" data-gate="H">H</button>
+      <button class="gate-btn" data-gate="S">S</button>
+      <button class="gate-btn" data-gate="T">T</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let theta = 0, phi = 0;
+let rotX = 0.4, rotY = -0.5;
+let dragging = false, lastMX, lastMY;
+let zoom = 1;
+let animFrame = null;
+
+function resize() {
+  const area = document.getElementById('canvas-area');
+  const s = Math.min(area.clientWidth, area.clientHeight, 640);
+  canvas.width = s;
+  canvas.height = s;
+  draw();
+}
+
+window.addEventListener('resize', resize);
+
+const cx = () => canvas.width / 2;
+const cy = () => canvas.height / 2;
+const R  = () => Math.min(canvas.width, canvas.height) * 0.36 * zoom;
+
+function project(x, y, z) {
+  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+  const x1 = cosY * x + sinY * z;
+  const y1 = sinX * sinY * x + cosX * y - sinX * cosY * z;
+  return { px: cx() + x1 * R(), py: cy() - y1 * R() };
+}
+
+function drawGreatCircle(axis) {
+  const steps = 120;
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    let x, y, z;
+    if (axis === 'xy')      { x = Math.cos(a); y = Math.sin(a); z = 0; }
+    else if (axis === 'xz') { x = Math.cos(a); y = 0; z = Math.sin(a); }
+    else                    { x = 0; y = Math.cos(a); z = Math.sin(a); }
+    const { px, py } = project(x, y, z);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+}
+
+function drawLatitude(lat) {
+  const r = Math.cos(lat);
+  const h = Math.sin(lat);
+  const steps = 80;
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const { px, py } = project(r * Math.cos(a), r * Math.sin(a), h);
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+}
+
+function draw() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const thR = theta * Math.PI / 180;
+  const phR = phi * Math.PI / 180;
+  const sx = Math.sin(thR) * Math.cos(phR);
+  const sy = Math.sin(thR) * Math.sin(phR);
+  const sz = Math.cos(thR);
+
+  // Sphere
+  ctx.beginPath();
+  ctx.arc(cx(), cy(), R(), 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.02)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Latitude rings
+  ctx.setLineDash([2, 6]);
+  ctx.lineWidth = 0.5;
+  [-60, -30, 30, 60].forEach(lat => {
+    drawLatitude(lat * Math.PI / 180);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.stroke();
+  });
+
+  // Great circles
+  ctx.setLineDash([3, 6]);
+  ctx.lineWidth = 0.6;
+  ['xy', 'xz', 'yz'].forEach(axis => {
+    drawGreatCircle(axis);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // Axes
+  const axesDef = [
+    { dir: [1.3, 0, 0], neg: [-1.1, 0, 0], label: 'x', col: '#f472b6' },
+    { dir: [0, 1.3, 0], neg: [0, -1.1, 0], label: 'y', col: '#34d399' },
+    { dir: [0, 0, 1.3], neg: [0, 0, -1.1], label: '|0⟩', col: '#4a9eff', nlabel: '|1⟩' },
+  ];
+
+  axesDef.forEach(({ dir, neg, label, col, nlabel }) => {
+    const p1 = project(...dir);
+    const p2 = project(...neg);
+
+    ctx.beginPath();
+    ctx.moveTo(p2.px, p2.py);
+    ctx.lineTo(p1.px, p1.py);
+    ctx.strokeStyle = col + '55';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Arrowhead on positive end
+    const dx = p1.px - p2.px, dy = p1.py - p2.py;
+    const len = Math.sqrt(dx*dx+dy*dy) || 1;
+    const nx2 = dx/len, ny2 = dy/len;
+    ctx.beginPath();
+    ctx.moveTo(p1.px, p1.py);
+    ctx.lineTo(p1.px - nx2*10 - ny2*4, p1.py - ny2*10 + nx2*4);
+    ctx.moveTo(p1.px, p1.py);
+    ctx.lineTo(p1.px - nx2*10 + ny2*4, p1.py - ny2*10 - nx2*4);
+    ctx.strokeStyle = col + '88';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = '500 12px "IBM Plex Mono", monospace';
+    ctx.fillStyle = col + 'cc';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, p1.px, p1.py - 12);
+    if (nlabel) {
+      ctx.fillStyle = col + '66';
+      ctx.fillText(nlabel, p2.px, p2.py + 16);
+    }
+  });
+
+  // Projection lines
+  const tip     = project(sx, sy, sz);
+  const zproj   = project(0, 0, sz);
+  const xyproj  = project(sx, sy, 0);
+  const origin  = project(0, 0, 0);
+
+  ctx.setLineDash([4, 5]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(74,158,255,0.2)';
+
+  ctx.beginPath(); ctx.moveTo(tip.px, tip.py); ctx.lineTo(zproj.px, zproj.py); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(tip.px, tip.py); ctx.lineTo(xyproj.px, xyproj.py); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(origin.px, origin.py); ctx.lineTo(xyproj.px, xyproj.py); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Longitude arc (phi angle indicator on equator)
+  if (theta > 2 && theta < 178) {
+    ctx.beginPath();
+    const arcR = R() * 0.28;
+    for (let i = 0; i <= 40; i++) {
+      const a = (i / 40) * phi * Math.PI / 180;
+      const p = project(Math.cos(a) * 0.28, Math.sin(a) * 0.28, 0);
+      i === 0 ? ctx.moveTo(p.px, p.py) : ctx.lineTo(p.px, p.py);
+    }
+    ctx.strokeStyle = 'rgba(52,211,153,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Theta arc
+  if (theta > 2) {
+    ctx.beginPath();
+    const phR2 = phi * Math.PI / 180;
+    for (let i = 0; i <= 40; i++) {
+      const t = (i / 40) * thR;
+      const p = project(Math.sin(t) * Math.cos(phR2) * 0.22, Math.sin(t) * Math.sin(phR2) * 0.22, Math.cos(t) * 0.22);
+      i === 0 ? ctx.moveTo(p.px, p.py) : ctx.lineTo(p.px, p.py);
+    }
+    ctx.strokeStyle = 'rgba(244,114,182,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // State vector
+  ctx.beginPath();
+  ctx.moveTo(origin.px, origin.py);
+  ctx.lineTo(tip.px, tip.py);
+
+  const grad = ctx.createLinearGradient(origin.px, origin.py, tip.px, tip.py);
+  grad.addColorStop(0, 'rgba(74,158,255,0.3)');
+  grad.addColorStop(1, '#4a9eff');
+  ctx.strokeStyle = grad;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Arrowhead
+  const dx2 = tip.px - origin.px, dy2 = tip.py - origin.py;
+  const len2 = Math.sqrt(dx2*dx2+dy2*dy2) || 1;
+  const nx3 = dx2/len2, ny3 = dy2/len2;
+  const ax = tip.px - nx3*16, ay = tip.py - ny3*16;
+  ctx.beginPath();
+  ctx.moveTo(tip.px, tip.py);
+  ctx.lineTo(ax - ny3*6, ay + nx3*6);
+  ctx.lineTo(ax + ny3*6, ay - nx3*6);
+  ctx.closePath();
+  ctx.fillStyle = '#4a9eff';
+  ctx.fill();
+
+  // Dot at tip
+  ctx.beginPath();
+  ctx.arc(tip.px, tip.py, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(tip.px, tip.py, 3.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#4a9eff';
+  ctx.fill();
+
+  // Origin dot
+  ctx.beginPath();
+  ctx.arc(origin.px, origin.py, 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fill();
+
+  updatePanel(sx, sy, sz);
+}
+
+function updatePanel(sx, sy, sz) {
+  document.getElementById('coord-x').textContent = sx.toFixed(3);
+  document.getElementById('coord-y').textContent = sy.toFixed(3);
+  document.getElementById('coord-z').textContent = sz.toFixed(3);
+
+  const thR = theta * Math.PI / 180;
+  const p0 = Math.cos(thR / 2) ** 2;
+  const p1 = Math.sin(thR / 2) ** 2;
+  document.getElementById('bar0').style.width = (p0 * 100).toFixed(1) + '%';
+  document.getElementById('bar1').style.width = (p1 * 100).toFixed(1) + '%';
+  document.getElementById('prob0').textContent = (p0 * 100).toFixed(1) + '%';
+  document.getElementById('prob1').textContent = (p1 * 100).toFixed(1) + '%';
+
+  let dirac;
+  const t = theta, p = phi;
+  if (t === 0)   dirac = '|ψ⟩ = |0⟩';
+  else if (t === 180) dirac = '|ψ⟩ = |1⟩';
+  else if (t === 90 && p === 0)   dirac = '|ψ⟩ = |+⟩ = (|0⟩+|1⟩)/√2';
+  else if (t === 90 && p === 180) dirac = '|ψ⟩ = |−⟩ = (|0⟩−|1⟩)/√2';
+  else if (t === 90 && p === 90)  dirac = '|ψ⟩ = |i⟩ = (|0⟩+i|1⟩)/√2';
+  else if (t === 90 && p === 270) dirac = '|ψ⟩ = |−i⟩ = (|0⟩−i|1⟩)/√2';
+  else {
+    const a = Math.cos(thR/2).toFixed(3);
+    const b = Math.sin(thR/2).toFixed(3);
+    dirac = `|ψ⟩ = ${a}|0⟩ + e^(i·${p}°)·${b}|1⟩`;
+  }
+  document.getElementById('state-dirac').textContent = dirac;
+}
+
+function setAngles(t, p) {
+  theta = t; phi = p;
+  document.getElementById('theta').value = t;
+  document.getElementById('phi').value = p;
+  document.getElementById('tval').textContent = t + '°';
+  document.getElementById('pval').textContent = p + '°';
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.t === t && +b.dataset.p === p);
+  });
+  draw();
+}
+
+// Quantum gate logic (on Bloch sphere)
+const gates = {
+  X: (t, p) => [180 - t, (p + 180) % 360],
+  Y: (t, p) => [180 - t, (360 - p) % 360],
+  Z: (t, p) => [t, (p + 180) % 360],
+  H: (t, p) => {
+    const thR = t * Math.PI / 180;
+    const phR = p * Math.PI / 180;
+    const x = Math.sin(thR) * Math.cos(phR);
+    const y = Math.sin(thR) * Math.sin(phR);
+    const z = Math.cos(thR);
+    const nx = z, ny = y, nz = x;
+    const newT = Math.acos(Math.max(-1, Math.min(1, nz))) * 180 / Math.PI;
+    const newP = (Math.atan2(ny, nx) * 180 / Math.PI + 360) % 360;
+    return [Math.round(newT), Math.round(newP)];
+  },
+  S: (t, p) => [t, (p + 90) % 360],
+  T: (t, p) => [t, (p + 45) % 360],
+};
+
+function animateGate(fromT, fromP, toT, toP) {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  const steps = 30;
+  let i = 0;
+  function step() {
+    const progress = i / steps;
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const ct = fromT + (toT - fromT) * ease;
+    const cp = fromP + (toP - fromP) * ease;
+    theta = ct; phi = cp;
+    document.getElementById('theta').value = Math.round(ct);
+    document.getElementById('phi').value = Math.round(cp);
+    document.getElementById('tval').textContent = Math.round(ct) + '°';
+    document.getElementById('pval').textContent = Math.round(cp) + '°';
+    draw();
+    if (++i <= steps) animFrame = requestAnimationFrame(step);
+    else { theta = toT; phi = toP; draw(); }
+  }
+  step();
+}
+
+// Controls
+document.getElementById('theta').addEventListener('input', e => {
+  theta = +e.target.value;
+  document.getElementById('tval').textContent = theta + '°';
+  draw();
+});
+document.getElementById('phi').addEventListener('input', e => {
+  phi = +e.target.value;
+  document.getElementById('pval').textContent = phi + '°';
+  draw();
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => setAngles(+btn.dataset.t, +btn.dataset.p));
+});
+
+document.querySelectorAll('.gate-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const fn = gates[btn.dataset.gate];
+    if (fn) {
+      const [nt, np] = fn(theta, phi);
+      animateGate(theta, phi, nt, np);
+    }
+  });
+});
+
+// Mouse drag rotation
+canvas.addEventListener('mousedown', e => { dragging = true; lastMX = e.clientX; lastMY = e.clientY; });
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  rotY += (e.clientX - lastMX) * 0.008;
+  rotX -= (e.clientY - lastMY) * 0.008;
+  lastMX = e.clientX; lastMY = e.clientY;
+  draw();
+});
+window.addEventListener('mouseup', () => dragging = false);
+
+// Scroll to zoom
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom = Math.max(0.5, Math.min(2.0, zoom - e.deltaY * 0.001));
+  draw();
+}, { passive: false });
+
+// Touch drag
+canvas.addEventListener('touchstart', e => {
+  dragging = true;
+  lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+});
+canvas.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  rotY += (e.touches[0].clientX - lastMX) * 0.01;
+  rotX -= (e.touches[0].clientY - lastMY) * 0.01;
+  lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+  draw();
+}, { passive: false });
+canvas.addEventListener('touchend', () => dragging = false);
+
+resize();
+</script>
+</body>
+</html>
+
+
