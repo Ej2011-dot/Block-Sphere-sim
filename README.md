@@ -14,7 +14,7 @@ Responsive Design: Works on desktop and mobile with touch support.
 
 ## How to Use
 
-1. Open `index html` in a web browser (or use VSCode's Live Server extension for local hosting).
+1. Open index.html in a web browser (or use VSCode's Live Server extension for local hosting).
 2. Interact with the canvas:
    - Drag to rotate the view.
    - Scroll to zoom in/out.
